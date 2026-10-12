@@ -1,0 +1,8 @@
+# AL / Business Central
+.alpackages/
+.snapshots/
+.altestrunner/
+*.app
+rad.json
+*.g.xlf
+**/.vscode/launch.json
