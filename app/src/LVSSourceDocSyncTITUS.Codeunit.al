@@ -48,6 +48,51 @@ codeunit 50950 "LVS Source Doc Sync TITUS"
         exit(Added);
     end;
 
+    /// Filter der Artikelnummern, die im aktuellen Mandanten fehlen (ohne gesperrte), Format A|B|C.
+    /// Count = Anzahl der Nummern. Ein Filter ueber etwa 2000 Zeichen laesst sich in BC nicht mehr setzen,
+    /// dann in mehreren Teilen verwenden (MaxLength).
+    procedure MissingItemFilter(CompanyFilter: Text; OrderFilter: Text; MaxLength: Integer; var Count: Integer): Text
+    var
+        Numbers: List of [Text];
+        Result: TextBuilder;
+        ItemNo: Text;
+    begin
+        if OrderFilter = '' then
+            Error('Bestellnummer fehlt.');
+        if (CompanyFilter = '') or (CompanyFilter = '247') then
+            CollectMissingItems('247', OrderFilter, Numbers);
+        if (CompanyFilter = '') or (CompanyFilter = 'Titus_GmbH') then
+            CollectMissingItems('Titus_GmbH', OrderFilter, Numbers);
+        Count := Numbers.Count();
+        foreach ItemNo in Numbers do begin
+            if Result.Length() > 0 then
+                Result.Append('|');
+            Result.Append(ItemNo);
+        end;
+        exit(Result.ToText());
+    end;
+
+    local procedure CollectMissingItems(SourceCompany: Text; OrderFilter: Text; var Numbers: List of [Text])
+    var
+        PurchaseLine: Record "Purchase Line";
+        Item: Record Item;
+        CompanyRec: Record Company;
+    begin
+        if not CompanyRec.Get(SourceCompany) then
+            exit;
+        PurchaseLine.ChangeCompany(SourceCompany);
+        PurchaseLine.SetRange("Document Type", PurchaseLine."Document Type"::Order);
+        PurchaseLine.SetFilter("Document No.", OrderFilter);
+        PurchaseLine.SetRange(Type, PurchaseLine.Type::Item);
+        if not PurchaseLine.FindSet() then
+            exit;
+        repeat
+            if not Numbers.Contains(PurchaseLine."No.") then
+                if not Item.Get(PurchaseLine."No.") then
+                    Numbers.Add(PurchaseLine."No.");
+        until PurchaseLine.Next() = 0;
+    end;
+
     /// Setzt Fehlermeldung und Fehleraufrufliste der Eintraege in Tabelle 50013 zurueck, damit TSO sie erneut verarbeitet.
     /// Nur Eintraege mit Fehlermeldung, nur fuer die angegebenen Bestellungen, ohne Trigger. Gibt die Anzahl zurueck.
     procedure ResetErrors(CompanyFilter: Text; OrderFilter: Text; Apply: Boolean): Integer

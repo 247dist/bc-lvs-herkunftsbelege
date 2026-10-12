@@ -11,6 +11,7 @@ permissionset 50955 "LVS Abgleich"
         tabledata "LVS Abgleich Kandidat" = RIMD,
         page "LVS Abgleich Kandidaten" = X,
         page "LVS Abgleich Eingabe" = X,
+        page "LVS Abgleich Artikelfilter" = X,
         codeunit "LVS Source Doc Sync TITUS" = X,
         tabledata Company = R,
         tabledata Field = R,

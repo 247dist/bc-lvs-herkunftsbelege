@@ -121,6 +121,39 @@ page 50952 "LVS Abgleich Kandidaten"
                     Message(Sync.CheckItems(CompanyFilter, OrderFilter));
                 end;
             }
+            action(FehlendeArtikelFilter)
+            {
+                ApplicationArea = All;
+                Caption = 'Fehlende Artikel (Filter)';
+                Image = FilterLines;
+                ToolTip = 'Zeigt die Nummern der Artikel, die in diesem Mandanten fehlen, als Filter A|B|C zum Kopieren. Eingabe: Bestellung Nr. und optional Mandant.';
+
+                trigger OnAction()
+                var
+                    Input: Page "LVS Abgleich Eingabe";
+                    Output: Page "LVS Abgleich Artikelfilter";
+                    Sync: Codeunit "LVS Source Doc Sync TITUS";
+                    DateFrom: Date;
+                    ReceiptFilter: Text;
+                    OrderFilter: Text;
+                    CompanyFilter: Text;
+                    ItemFilter: Text;
+                    Count: Integer;
+                begin
+                    if Input.RunModal() <> Action::OK then
+                        exit;
+                    Input.GetValues(DateFrom, ReceiptFilter, OrderFilter, CompanyFilter);
+                    if OrderFilter = '' then
+                        Error('Bitte eine Bestellung Nr. angeben, zum Beispiel BTI1089290|BTI1089304|BTI1089393.');
+                    ItemFilter := Sync.MissingItemFilter(CompanyFilter, OrderFilter, 2000, Count);
+                    if Count = 0 then begin
+                        Message('Es fehlen keine Artikel in %1.', CompanyName());
+                        exit;
+                    end;
+                    Output.SetValues(StrSubstNo('%1 Artikel fehlen in %2. Filter (%3 Zeichen):', Count, CompanyName(), StrLen(ItemFilter)), ItemFilter);
+                    Output.RunModal();
+                end;
+            }
             action(FehlerZuruecksetzen)
             {
                 ApplicationArea = All;
