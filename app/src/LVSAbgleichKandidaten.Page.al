@@ -121,6 +121,37 @@ page 50952 "LVS Abgleich Kandidaten"
                     Message(Sync.CheckItems(CompanyFilter, OrderFilter));
                 end;
             }
+            action(FehlerZuruecksetzen)
+            {
+                ApplicationArea = All;
+                Caption = 'Fehler zuruecksetzen';
+                Image = ClearLog;
+                ToolTip = 'Leert Fehlermeldung und Fehleraufrufliste der Eintraege in Herkunftsbelege Mandant zu den angegebenen Bestellungen, damit TSO sie erneut verarbeitet. Eingabe: Bestellung Nr. und optional Mandant.';
+
+                trigger OnAction()
+                var
+                    Input: Page "LVS Abgleich Eingabe";
+                    Sync: Codeunit "LVS Source Doc Sync TITUS";
+                    DateFrom: Date;
+                    ReceiptFilter: Text;
+                    OrderFilter: Text;
+                    CompanyFilter: Text;
+                    Count: Integer;
+                begin
+                    if Input.RunModal() <> Action::OK then
+                        exit;
+                    Input.GetValues(DateFrom, ReceiptFilter, OrderFilter, CompanyFilter);
+                    if OrderFilter = '' then
+                        Error('Bitte eine Bestellung Nr. angeben, zum Beispiel BTI1089290|BTI1089304|BTI1089393.');
+                    Count := Sync.ResetErrors(CompanyFilter, OrderFilter, false);
+                    if Count = 0 then
+                        Error('Keine Eintraege mit Fehlermeldung zu diesen Bestellungen gefunden.');
+                    if not Confirm('Fehler bei %1 Eintraegen zuruecksetzen?', false, Count) then
+                        exit;
+                    Sync.ResetErrors(CompanyFilter, OrderFilter, true);
+                    Message('%1 Eintraege zurueckgesetzt.', Count);
+                end;
+            }
             action(Freigeben)
             {
                 ApplicationArea = All;

@@ -48,6 +48,36 @@ codeunit 50950 "LVS Source Doc Sync TITUS"
         exit(Added);
     end;
 
+    /// Setzt Fehlermeldung und Fehleraufrufliste der Eintraege in Tabelle 50013 zurueck, damit TSO sie erneut verarbeitet.
+    /// Nur Eintraege mit Fehlermeldung, nur fuer die angegebenen Bestellungen, ohne Trigger. Gibt die Anzahl zurueck.
+    procedure ResetErrors(CompanyFilter: Text; OrderFilter: Text; Apply: Boolean): Integer
+    var
+        RecRef: RecordRef;
+        MessageFieldNo: Integer;
+        StackFieldNo: Integer;
+        Count: Integer;
+    begin
+        if OrderFilter = '' then
+            Error('Bestellnummer fehlt.');
+        RecRef.Open(GetTableId());
+        SetFilterValue(RecRef, 'SourceNo', OrderFilter);
+        if CompanyFilter <> '' then
+            SetFilterValue(RecRef, 'Companyname', CompanyFilter);
+        SetFilterValue(RecRef, 'ErrorMessage', '<>''''');
+        MessageFieldNo := FieldNoOrError(RecRef.Number, 'ErrorMessage');
+        StackFieldNo := FieldNoOrError(RecRef.Number, 'ErrorCallStack');
+        if RecRef.FindSet(true) then
+            repeat
+                Count += 1;
+                if Apply then begin
+                    RecRef.Field(MessageFieldNo).Value := '';
+                    RecRef.Field(StackFieldNo).Value := '';
+                    RecRef.Modify(false);
+                end;
+            until RecRef.Next() = 0;
+        exit(Count);
+    end;
+
     /// Prueft, welche Artikel der Bestellzeilen im aktuellen Mandanten (LVS-Logistik) nicht existieren oder gesperrt sind.
     /// Ohne gefundene Artikel kann TSO bei der Umlagerung die Zeile nicht anlegen
     /// ("Sie muessen einen vorhandenen Artikel auswaehlen").
