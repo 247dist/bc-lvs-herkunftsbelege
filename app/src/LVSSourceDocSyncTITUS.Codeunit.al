@@ -48,6 +48,60 @@ codeunit 50950 "LVS Source Doc Sync TITUS"
         exit(Added);
     end;
 
+    /// Legt Kandidaten direkt aus Bestellungen an, ohne Wareneingang. Fuer bereits gebuchte Wareneingaenge.
+    /// Je Lagerort der Artikelzeilen ein Kandidat, sofort freigegeben. CompanyFilter leer = beide Mandanten.
+    procedure ScanOrders(CompanyFilter: Text; OrderFilter: Text): Integer
+    var
+        Added: Integer;
+    begin
+        if OrderFilter = '' then
+            Error('Bestellnummer fehlt.');
+        if (CompanyFilter = '') or (CompanyFilter = '247') then
+            Added += ScanOrdersInCompany('247', OrderFilter);
+        if (CompanyFilter = '') or (CompanyFilter = 'Titus_GmbH') then
+            Added += ScanOrdersInCompany('Titus_GmbH', OrderFilter);
+        exit(Added);
+    end;
+
+    local procedure ScanOrdersInCompany(SourceCompany: Text; OrderFilter: Text): Integer
+    var
+        PurchaseHeader: Record "Purchase Header";
+        PurchaseLine: Record "Purchase Line";
+        CompanyRec: Record Company;
+        Locations: List of [Text];
+        LocationCode: Text;
+        Added: Integer;
+    begin
+        if not CompanyRec.Get(SourceCompany) then
+            exit(0);
+
+        PurchaseHeader.ChangeCompany(SourceCompany);
+        PurchaseHeader.SetRange("Document Type", PurchaseHeader."Document Type"::Order);
+        PurchaseHeader.SetFilter("No.", OrderFilter);
+        if not PurchaseHeader.FindSet() then
+            exit(0);
+
+        repeat
+            Clear(Locations);
+            PurchaseLine.ChangeCompany(SourceCompany);
+            PurchaseLine.Reset();
+            PurchaseLine.SetRange("Document Type", PurchaseHeader."Document Type");
+            PurchaseLine.SetRange("Document No.", PurchaseHeader."No.");
+            PurchaseLine.SetRange(Type, PurchaseLine.Type::Item);
+            if PurchaseLine.FindSet() then
+                repeat
+                    if not Locations.Contains(PurchaseLine."Location Code") then
+                        Locations.Add(PurchaseLine."Location Code");
+                until PurchaseLine.Next() = 0;
+
+            foreach LocationCode in Locations do
+                if not RequestExists(SourceCompany, PurchaseHeader."No.", LocationCode) then
+                    if InsertCandidate(SourceCompany, '', PurchaseHeader."Order Date", PurchaseHeader."No.", LocationCode, true) then
+                        Added += 1;
+        until PurchaseHeader.Next() = 0;
+        exit(Added);
+    end;
+
     local procedure ScanCompany(SourceCompany: Text; FromDate: Date; ReceiptFilter: Text; Preapproved: Boolean): Integer
     var
         WhseReceiptHeader: Record "Warehouse Receipt Header";

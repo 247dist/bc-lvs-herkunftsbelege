@@ -82,12 +82,17 @@ page 50952 "LVS Abgleich Kandidaten"
                     Sync: Codeunit "LVS Source Doc Sync TITUS";
                     DateFrom: Date;
                     ReceiptFilter: Text;
+                    OrderFilter: Text;
+                    CompanyFilter: Text;
                     Added: Integer;
                 begin
                     if Input.RunModal() <> Action::OK then
                         exit;
-                    Input.GetValues(DateFrom, ReceiptFilter);
-                    Added := Sync.Scan(DateFrom, ReceiptFilter);
+                    Input.GetValues(DateFrom, ReceiptFilter, OrderFilter, CompanyFilter);
+                    if OrderFilter <> '' then
+                        Added := Sync.ScanOrders(CompanyFilter, OrderFilter)
+                    else
+                        Added := Sync.Scan(DateFrom, ReceiptFilter);
                     Message('%1 neue Kandidaten eingelesen.', Added);
                     CurrPage.Update(false);
                 end;

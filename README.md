@@ -4,7 +4,7 @@ Business-Central-Erweiterung (AL) fuer den Mandanten **LVS-Logistik**. Legt fehl
 **Herkunftsbelege Mandant** (Tabelle 50013, Name "Warehouse RequestTSO") fuer Wareneingaenge aus **247** und
 **Titus_GmbH** an, damit sie ueber die Aufgabenwarteschlange "TITUS GmbH <> LVS" (CU 50064) ins LVS gelangen.
 
-Stand: Version 1.1.0.0, gebaut. In der Sandbox lief bisher nur der Vorgaengerstand (Testlauf), **noch nicht in Production**.
+Stand: Version 1.2.0.0, gebaut. In der Sandbox lief bisher nur der Vorgaengerstand (Testlauf), **noch nicht in Production**.
 
 ## Hintergrund
 
@@ -26,6 +26,9 @@ Seite **Herkunftsbeleg-Abgleich** (Suche in BC):
 - **Einlesen** fragt nach Buchungsdatum ab (Standard 14 Tage) und/oder Wareneingangsnummer. Mit Wareneingangsnummer
   gilt keine Altersgrenze, die Kandidaten sind sofort freigegeben. Nur mit Datum werden Kandidaten einzeln freigegeben.
   Ohne Datum ist eine Wareneingangsnummer Pflicht (Aelteres nur mit Eingabe).
+- **Bestellung Nr. (und optional Mandant)** legt Kandidaten direkt aus der Bestellung an, je Lagerort der Artikelzeilen,
+  sofort freigegeben und ohne Altersgrenze. Das ist der Weg fuer bereits **gebuchte** Wareneingaenge, deren WETI es
+  nicht mehr gibt. Die Bestellung hat Vorrang vor Datum und Wareneingang.
 - Kandidat = Bestellung und Lagerort eines Wareneingangs, fuer die in Tabelle 50013 kein Eintrag existiert.
   Ein WETI kann mehrere Bestellungen enthalten, je Bestellung ein Kandidat.
 - **Freigegebene anlegen** legt den Eintrag an. Fehler stehen je Zeile. Vorhandene Eintraege bleiben unberuehrt.
@@ -57,6 +60,6 @@ Fuer Art Kreditor, Fuer Nr. = Kreditor der Bestellung.
 ## Offen
 
 - In der Sandbox sind alle Wareneingaenge aelter als 14 Tage, ein Test mit frischen Daten steht aus.
-- Test des Anlegens (Version 1.1.0.0) in Sandbox und danach Production ist noch nicht erfolgt.
+- Test des Anlegens (Version 1.2.0.0) in Sandbox und danach Production ist noch nicht erfolgt.
 - Ursache der fehlenden Eintraege und der Artikelfehler (WETI1015336/7/53) klaeren.
 - Aufgabenwarteschlange im LVS-Mandanten einrichten, erst nachdem der manuelle Weg ueber die Seite sauber laeuft.

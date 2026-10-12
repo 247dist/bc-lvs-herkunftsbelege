@@ -18,7 +18,19 @@ page 50953 "LVS Abgleich Eingabe"
             {
                 ApplicationArea = All;
                 Caption = 'Wareneingang Nr.';
-                ToolTip = 'Optional: eine Nummer oder ein Filter, zum Beispiel WETI1015336|WETI1015337. Ohne Eingabe gilt nur die Datumsgrenze.';
+                ToolTip = 'Optional: eine Nummer oder ein Filter, zum Beispiel WETI1015336|WETI1015337. Gilt ohne Altersgrenze. Ist der Wareneingang schon gebucht, die Bestellnummer verwenden.';
+            }
+            field(OrderFilterCtrl; OrderFilter)
+            {
+                ApplicationArea = All;
+                Caption = 'Bestellung Nr.';
+                ToolTip = 'Optional: eine Bestellnummer, zum Beispiel B240000691 oder BTI1089290. Gilt ohne Altersgrenze und auch fuer bereits gebuchte Wareneingaenge. Hat Vorrang vor Datum und Wareneingang.';
+            }
+            field(CompanyFilterCtrl; CompanyFilter)
+            {
+                ApplicationArea = All;
+                Caption = 'Mandant';
+                ToolTip = 'Nur fuer die Bestellnummer: 247 oder Titus_GmbH. Leer = beide Mandanten.';
             }
         }
     }
@@ -26,6 +38,8 @@ page 50953 "LVS Abgleich Eingabe"
     var
         DateFrom: Date;
         ReceiptFilter: Text[250];
+        OrderFilter: Text[250];
+        CompanyFilter: Text[30];
 
     trigger OnOpenPage()
     begin
@@ -35,14 +49,16 @@ page 50953 "LVS Abgleich Eingabe"
     trigger OnQueryClosePage(CloseAction: Action): Boolean
     begin
         if CloseAction = Action::OK then
-            if (DateFrom = 0D) and (ReceiptFilter = '') then
-                Error('Ohne Datum muss eine Wareneingangsnummer angegeben werden. Aelteres nur mit Eingabe.');
+            if (DateFrom = 0D) and (ReceiptFilter = '') and (OrderFilter = '') then
+                Error('Ohne Datum muss eine Wareneingangs- oder Bestellnummer angegeben werden. Aelteres nur mit Eingabe.');
         exit(true);
     end;
 
-    procedure GetValues(var NewDateFrom: Date; var NewReceiptFilter: Text)
+    procedure GetValues(var NewDateFrom: Date; var NewReceiptFilter: Text; var NewOrderFilter: Text; var NewCompanyFilter: Text)
     begin
         NewDateFrom := DateFrom;
         NewReceiptFilter := ReceiptFilter;
+        NewOrderFilter := OrderFilter;
+        NewCompanyFilter := CompanyFilter;
     end;
 }
