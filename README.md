@@ -4,7 +4,7 @@ Business-Central-Erweiterung (AL) fuer den Mandanten **LVS-Logistik**. Legt fehl
 **Herkunftsbelege Mandant** (Tabelle 50013, Name "Warehouse RequestTSO") fuer Wareneingaenge aus **247** und
 **Titus_GmbH** an, damit sie ueber die Aufgabenwarteschlange "TITUS GmbH <> LVS" (CU 50064) ins LVS gelangen.
 
-Stand: Version 1.2.0.0, gebaut. In der Sandbox lief bisher nur der Vorgaengerstand (Testlauf), **noch nicht in Production**.
+Stand: Version 1.3.0.0, gebaut. In der Sandbox lief bisher nur der Vorgaengerstand (Testlauf), **noch nicht in Production**.
 
 ## Hintergrund
 
@@ -19,6 +19,16 @@ Gefunden am 09.10.2026:
   nicht geklaert (Vermutung: nachtraegliche Teillieferung zu bereits freigegebener Bestellung).
 - Tabelle 50013 und CU 50064 liegen nicht in KatarGo (TSO-DATA), sondern in einer weiteren Erweiterung.
 
+## Neue Erkenntnis (12.10.2026)
+
+Die Fehleraufrufliste der drei Eintraege (WETI1015336/7/53) zeigt: TSO scheitert nicht beim Anlegen des Eintrags,
+sondern spaeter in der Uebertragung. CU 50064 `WhseCreateWhseDocumentsTSO` ruft CU 50015
+`WhseQueueTransferOrderTSO` und CU 50063 `WhseCreateTransferOrderTSO` auf, die aus der Bestellung einen
+**Umlagerungsauftrag** erzeugen. Beim Setzen der Artikelnr. an der Umlagerungszeile (`Transfer Line.GetItemNo`)
+wird der Artikel nicht gefunden: "Sie muessen einen vorhandenen Artikel auswaehlen." Ursache war die
+Artikelsynchronisation TITUS -> LVS, die seit dem 07.10.2026 im Fehler stand (Sync lief am 12.10. noch).
+Nach dem Sync muss die Fehlermeldung am Eintrag in Tabelle 50013 zurueckgesetzt werden, damit TSO erneut verarbeitet.
+
 ## Was die Erweiterung tut
 
 Seite **Herkunftsbeleg-Abgleich** (Suche in BC):
@@ -29,6 +39,8 @@ Seite **Herkunftsbeleg-Abgleich** (Suche in BC):
 - **Bestellung Nr. (und optional Mandant)** legt Kandidaten direkt aus der Bestellung an, je Lagerort der Artikelzeilen,
   sofort freigegeben und ohne Altersgrenze. Das ist der Weg fuer bereits **gebuchte** Wareneingaenge, deren WETI es
   nicht mehr gibt. Die Bestellung hat Vorrang vor Datum und Wareneingang.
+- **Artikel im LVS pruefen** (nur lesend): zeigt zu einer oder mehreren Bestellungen, welche Artikel im aktuellen
+  Mandanten (LVS-Logistik) fehlen oder gesperrt sind. Hintergrund unten ("Neue Erkenntnis").
 - Kandidat = Bestellung und Lagerort eines Wareneingangs, fuer die in Tabelle 50013 kein Eintrag existiert.
   Ein WETI kann mehrere Bestellungen enthalten, je Bestellung ein Kandidat.
 - **Freigegebene anlegen** legt den Eintrag an. Fehler stehen je Zeile. Vorhandene Eintraege bleiben unberuehrt.
@@ -60,6 +72,6 @@ Fuer Art Kreditor, Fuer Nr. = Kreditor der Bestellung.
 ## Offen
 
 - In der Sandbox sind alle Wareneingaenge aelter als 14 Tage, ein Test mit frischen Daten steht aus.
-- Test des Anlegens (Version 1.2.0.0) in Sandbox und danach Production ist noch nicht erfolgt.
+- Test des Anlegens (Version 1.3.0.0) in Sandbox und danach Production ist noch nicht erfolgt.
 - Ursache der fehlenden Eintraege und der Artikelfehler (WETI1015336/7/53) klaeren.
 - Aufgabenwarteschlange im LVS-Mandanten einrichten, erst nachdem der manuelle Weg ueber die Seite sauber laeuft.

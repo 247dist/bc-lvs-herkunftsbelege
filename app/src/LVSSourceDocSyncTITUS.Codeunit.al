@@ -48,6 +48,57 @@ codeunit 50950 "LVS Source Doc Sync TITUS"
         exit(Added);
     end;
 
+    /// Prueft, welche Artikel der Bestellzeilen im aktuellen Mandanten (LVS-Logistik) nicht existieren oder gesperrt sind.
+    /// Ohne gefundene Artikel kann TSO bei der Umlagerung die Zeile nicht anlegen
+    /// ("Sie muessen einen vorhandenen Artikel auswaehlen").
+    procedure CheckItems(CompanyFilter: Text; OrderFilter: Text): Text
+    var
+        Report: TextBuilder;
+        Missing: Integer;
+        Checked: Integer;
+    begin
+        if OrderFilter = '' then
+            Error('Bestellnummer fehlt.');
+        if (CompanyFilter = '') or (CompanyFilter = '247') then
+            CheckItemsInCompany('247', OrderFilter, Report, Missing, Checked);
+        if (CompanyFilter = '') or (CompanyFilter = 'Titus_GmbH') then
+            CheckItemsInCompany('Titus_GmbH', OrderFilter, Report, Missing, Checked);
+        exit(StrSubstNo('%1 Artikel geprueft, %2 fehlen oder sind gesperrt in %3.', Checked, Missing, CompanyName()) + '' + Report.ToText());
+    end;
+
+    local procedure CheckItemsInCompany(SourceCompany: Text; OrderFilter: Text; var Report: TextBuilder; var Missing: Integer; var Checked: Integer)
+    var
+        PurchaseLine: Record "Purchase Line";
+        Item: Record Item;
+        CompanyRec: Record Company;
+        Seen: List of [Text];
+        ItemKey: Text;
+    begin
+        if not CompanyRec.Get(SourceCompany) then
+            exit;
+        PurchaseLine.ChangeCompany(SourceCompany);
+        PurchaseLine.SetRange("Document Type", PurchaseLine."Document Type"::Order);
+        PurchaseLine.SetFilter("Document No.", OrderFilter);
+        PurchaseLine.SetRange(Type, PurchaseLine.Type::Item);
+        if not PurchaseLine.FindSet() then
+            exit;
+        repeat
+            ItemKey := PurchaseLine."Document No." + '|' + PurchaseLine."No.";
+            if not Seen.Contains(ItemKey) then begin
+                Seen.Add(ItemKey);
+                Checked += 1;
+                if not Item.Get(PurchaseLine."No.") then begin
+                    Missing += 1;
+                    Report.AppendLine(StrSubstNo('%1 %2: Artikel %3 (%4) fehlt.', SourceCompany, PurchaseLine."Document No.", PurchaseLine."No.", PurchaseLine.Description));
+                end else
+                    if Item.Blocked then begin
+                        Missing += 1;
+                        Report.AppendLine(StrSubstNo('%1 %2: Artikel %3 (%4) ist gesperrt.', SourceCompany, PurchaseLine."Document No.", PurchaseLine."No.", PurchaseLine.Description));
+                    end;
+            end;
+        until PurchaseLine.Next() = 0;
+    end;
+
     /// Legt Kandidaten direkt aus Bestellungen an, ohne Wareneingang. Fuer bereits gebuchte Wareneingaenge.
     /// Je Lagerort der Artikelzeilen ein Kandidat, sofort freigegeben. CompanyFilter leer = beide Mandanten.
     procedure ScanOrders(CompanyFilter: Text; OrderFilter: Text): Integer

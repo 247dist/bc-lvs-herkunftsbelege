@@ -97,6 +97,30 @@ page 50952 "LVS Abgleich Kandidaten"
                     CurrPage.Update(false);
                 end;
             }
+            action(ArtikelPruefen)
+            {
+                ApplicationArea = All;
+                Caption = 'Artikel im LVS pruefen';
+                Image = ItemLines;
+                ToolTip = 'Zeigt, welche Artikel der Bestellzeilen in diesem Mandanten fehlen oder gesperrt sind. Eingabe: Bestellung Nr. und optional Mandant.';
+
+                trigger OnAction()
+                var
+                    Input: Page "LVS Abgleich Eingabe";
+                    Sync: Codeunit "LVS Source Doc Sync TITUS";
+                    DateFrom: Date;
+                    ReceiptFilter: Text;
+                    OrderFilter: Text;
+                    CompanyFilter: Text;
+                begin
+                    if Input.RunModal() <> Action::OK then
+                        exit;
+                    Input.GetValues(DateFrom, ReceiptFilter, OrderFilter, CompanyFilter);
+                    if OrderFilter = '' then
+                        Error('Bitte eine Bestellung Nr. angeben, zum Beispiel BTI1089290|BTI1089304|BTI1089393.');
+                    Message(Sync.CheckItems(CompanyFilter, OrderFilter));
+                end;
+            }
             action(Freigeben)
             {
                 ApplicationArea = All;
@@ -174,6 +198,7 @@ page 50952 "LVS Abgleich Kandidaten"
         area(Promoted)
         {
             actionref(Einlesen_Promoted; Einlesen) { }
+            actionref(ArtikelPruefen_Promoted; ArtikelPruefen) { }
             actionref(Freigeben_Promoted; Freigeben) { }
             actionref(Anlegen_Promoted; Anlegen) { }
         }
