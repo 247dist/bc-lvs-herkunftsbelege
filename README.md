@@ -4,7 +4,7 @@ Business-Central-Erweiterung (AL) fuer den Mandanten **LVS-Logistik**. Legt fehl
 **Herkunftsbelege Mandant** (Tabelle 50013, Name "Warehouse RequestTSO") fuer Wareneingaenge aus **247** und
 **Titus_GmbH** an, damit sie ueber die Aufgabenwarteschlange "TITUS GmbH <> LVS" (CU 50064) ins LVS gelangen.
 
-Stand: Version 1.3.0.0, gebaut. In der Sandbox lief bisher nur der Vorgaengerstand (Testlauf), **noch nicht in Production**.
+Stand: Version 1.5.0.0. In Production installiert ist 1.4.0.0 (Upload am 12.10.2026), 1.5.0.0 ist gebaut, noch nicht eingespielt.
 
 ## Hintergrund
 
@@ -29,6 +29,20 @@ wird der Artikel nicht gefunden: "Sie muessen einen vorhandenen Artikel auswaehl
 Artikelsynchronisation TITUS -> LVS, die seit dem 07.10.2026 im Fehler stand (Sync lief am 12.10. noch).
 Nach dem Sync muss die Fehlermeldung am Eintrag in Tabelle 50013 zurueckgesetzt werden, damit TSO erneut verarbeitet.
 
+### Stand der Ursachensuche (12.10.2026, Production)
+
+- Fehlende Artikel im LVS-Mandanten: 75 von 128 Artikeln der drei Bestellungen. Vorhanden ist ein Artikel vom
+  06.10.2026, fehlend sind Artikel vom 08.10.2026 (Kollektion Homeboy Q3-2026). Die Artikelsynchronisation
+  TITUS -> LVS stand seit dem 07.10. im Fehler, lief nach dem Neustart fehlerfrei, hat aber nicht alle uebertragen.
+- Der Farbsync (`bc-data-sync`, Repo `247dist/bc-data-sync`) ist **nicht** die Ursache: `bc-sync diff` am 12.10.
+  zeigt fuer 247 und LVS-Logistik 0 fehlende Farben und 0 Feldabweichungen. `bc-data-sync` synchronisiert Farben
+  und den Kreditor-Abgleich, keine Artikel.
+- Der Artikelsync laeuft vermutlich im LS-Central-Scheduler (Jobs ITEMREPL, WEBREPL, ARTREF). Offen: welcher Job es ist
+  und warum er die Artikel nach dem 07.10. nicht nachholt. Vermutung (ungeprueft): der Sync uebertraegt nur
+  geaenderte Artikel ab seinem Stand-Zeiger. Alle 75 Artikel wurden in TITUS geaendert und zurueckgeaendert, das
+  Ergebnis der Pruefung steht noch aus.
+- Aufruf der Nummernsuche: Aktion "Artikel im LVS pruefen" in der Seite "Herkunftsbeleg-Abgleich".
+
 ## Was die Erweiterung tut
 
 Seite **Herkunftsbeleg-Abgleich** (Suche in BC):
@@ -43,6 +57,11 @@ Seite **Herkunftsbeleg-Abgleich** (Suche in BC):
   Mandanten (LVS-Logistik) fehlen oder gesperrt sind. Hintergrund unten ("Neue Erkenntnis").
 - Kandidat = Bestellung und Lagerort eines Wareneingangs, fuer die in Tabelle 50013 kein Eintrag existiert.
   Ein WETI kann mehrere Bestellungen enthalten, je Bestellung ein Kandidat.
+- **Fehlende Artikel (Filter)** (nur lesend): gibt die Nummern der fehlenden Artikel als Filter `A|B|C` zum Kopieren
+  aus (fuer ein Konfigurationspaket). Aktuell etwa 75 Artikel der drei Bestellungen.
+- **Fehler zuruecksetzen**: leert Fehlermeldung und Fehleraufrufliste der Eintraege in Tabelle 50013 zu angegebenen
+  Bestellungen (nach Rueckfrage mit Anzahl, ohne Trigger). TSO verarbeitet sie danach erneut (am 12.10. bestaetigt:
+  derselbe Fehler kam zurueck, solange die Artikel fehlten).
 - **Freigegebene anlegen** legt den Eintrag an. Fehler stehen je Zeile. Vorhandene Eintraege bleiben unberuehrt.
 - **Aufgabenwarteschlange:** Codeunit 50950 arbeitet nur freigegebene, noch nicht angelegte Kandidaten ab.
 
@@ -72,6 +91,6 @@ Fuer Art Kreditor, Fuer Nr. = Kreditor der Bestellung.
 ## Offen
 
 - In der Sandbox sind alle Wareneingaenge aelter als 14 Tage, ein Test mit frischen Daten steht aus.
-- Test des Anlegens (Version 1.3.0.0) in Sandbox und danach Production ist noch nicht erfolgt.
+- Test des Anlegens (Version 1.5.0.0) in Sandbox und danach Production ist noch nicht erfolgt.
 - Ursache der fehlenden Eintraege und der Artikelfehler (WETI1015336/7/53) klaeren.
 - Aufgabenwarteschlange im LVS-Mandanten einrichten, erst nachdem der manuelle Weg ueber die Seite sauber laeuft.
