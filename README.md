@@ -4,7 +4,7 @@ Business-Central-Erweiterung (AL) fuer den Mandanten **LVS-Logistik**. Legt fehl
 **Herkunftsbelege Mandant** (Tabelle 50013, Name "Warehouse RequestTSO") fuer Wareneingaenge aus **247** und
 **Titus_GmbH** an, damit sie ueber die Aufgabenwarteschlange "TITUS GmbH <> LVS" (CU 50064) ins LVS gelangen.
 
-Stand: Version 1.6.0.0 (gebaut, im Git). In Production lief bis 13.10.2026 die Version 1.4.0.0.
+Stand: Version 1.6.0.0, seit 13.10.2026 in Production.
 
 ## Hintergrund
 
@@ -50,8 +50,10 @@ Die Erweiterung (bis 1.5.0.0) legte sie an, TSO verarbeitete sie aber nicht: In 
 "2" bzw. leer statt "Einkaufsbestellung". Ursache: Der Wert der Optionsfelder wurde als Zahl geschrieben, abgeleitet aus der
 Optionsliste des Konfigurationspakets. Diese Nummern sind nicht die internen Werte des Feldes. **Ab 1.6.0.0** kopiert
 das Anlegen alle Werte von einem fertigen Eintrag (mit gesetztem "Befindet sich im LVS"), die Aktion "Herkunftsbeleg
-korrigieren" repariert vorhandene Eintraege. Danach waren die Umlagerungsauftraege WE24100645/46/47 im LVS
-(VIRTUELL -> ZENTRAL, Freigegeben).
+korrigieren" repariert vorhandene Eintraege. Mit dieser Aktion (1.6.0.0, Production) wurden die drei Eintraege
+korrigiert, danach waren die Umlagerungsauftraege WE24100645/46/47 im LVS (VIRTUELL -> ZENTRAL, Freigegeben).
+Das Anlegen aus der Vorlage (neue Eintraege ab 1.6.0.0) ist damit noch nicht an einem echten Fall geprueft, die
+Korrektur aber schon (sie nutzt dieselbe Vorlage).
 
 Lehre: Optionswerte an fremden Tabellen nie aus Listenindex oder Konfigurationspaket ableiten, sondern von einem
 vorhandenen Datensatz uebernehmen und gegen die Anzeige pruefen.
