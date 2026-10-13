@@ -4,7 +4,7 @@ Business-Central-Erweiterung (AL) fuer den Mandanten **LVS-Logistik**. Legt fehl
 **Herkunftsbelege Mandant** (Tabelle 50013, Name "Warehouse RequestTSO") fuer Wareneingaenge aus **247** und
 **Titus_GmbH** an, damit sie ueber die Aufgabenwarteschlange "TITUS GmbH <> LVS" (CU 50064) ins LVS gelangen.
 
-Stand: Version 1.5.0.0. In Production installiert ist 1.4.0.0 (Upload am 12.10.2026), 1.5.0.0 ist gebaut, noch nicht eingespielt.
+Stand: Version 1.6.0.0 (gebaut, im Git). In Production lief bis 13.10.2026 die Version 1.4.0.0.
 
 ## Hintergrund
 
@@ -43,6 +43,19 @@ Nach dem Sync muss die Fehlermeldung am Eintrag in Tabelle 50013 zurueckgesetzt 
   Ergebnis der Pruefung steht noch aus.
 - Aufruf der Nummernsuche: Aktion "Artikel im LVS pruefen" in der Seite "Herkunftsbeleg-Abgleich".
 
+### Fall WE24100645/46/47 (13.10.2026)
+
+Zu den Wareneingaengen in 247 (Bestellungen B240000720, B240000762, B240000745) gab es keinen Eintrag in Tabelle 50013.
+Die Erweiterung (bis 1.5.0.0) legte sie an, TSO verarbeitete sie aber nicht: In der Spalte "Herkunftsbeleg" stand
+"2" bzw. leer statt "Einkaufsbestellung". Ursache: Der Wert der Optionsfelder wurde als Zahl geschrieben, abgeleitet aus der
+Optionsliste des Konfigurationspakets. Diese Nummern sind nicht die internen Werte des Feldes. **Ab 1.6.0.0** kopiert
+das Anlegen alle Werte von einem fertigen Eintrag (mit gesetztem "Befindet sich im LVS"), die Aktion "Herkunftsbeleg
+korrigieren" repariert vorhandene Eintraege. Danach waren die Umlagerungsauftraege WE24100645/46/47 im LVS
+(VIRTUELL -> ZENTRAL, Freigegeben).
+
+Lehre: Optionswerte an fremden Tabellen nie aus Listenindex oder Konfigurationspaket ableiten, sondern von einem
+vorhandenen Datensatz uebernehmen und gegen die Anzeige pruefen.
+
 ## Was die Erweiterung tut
 
 Seite **Herkunftsbeleg-Abgleich** (Suche in BC):
@@ -59,6 +72,8 @@ Seite **Herkunftsbeleg-Abgleich** (Suche in BC):
   Ein WETI kann mehrere Bestellungen enthalten, je Bestellung ein Kandidat.
 - **Fehlende Artikel (Filter)** (nur lesend): gibt die Nummern der fehlenden Artikel als Filter `A|B|C` zum Kopieren
   aus (fuer ein Konfigurationspaket). Aktuell etwa 75 Artikel der drei Bestellungen.
+- **Herkunftsbeleg korrigieren**: setzt das Feld Herkunftsbeleg bei vorhandenen Eintraegen zu angegebenen Bestellungen auf
+  den Wert eines fertigen Eintrags (Einkaufsbestellung).
 - **Fehler zuruecksetzen**: leert Fehlermeldung und Fehleraufrufliste der Eintraege in Tabelle 50013 zu angegebenen
   Bestellungen (nach Rueckfrage mit Anzahl, ohne Trigger). TSO verarbeitet sie danach erneut (am 12.10. bestaetigt:
   derselbe Fehler kam zurueck, solange die Artikel fehlten).
