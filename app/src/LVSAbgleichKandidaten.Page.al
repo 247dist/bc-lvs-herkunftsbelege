@@ -154,6 +154,37 @@ page 50952 "LVS Abgleich Kandidaten"
                     Output.RunModal();
                 end;
             }
+            action(HerkunftsbelegKorrigieren)
+            {
+                ApplicationArea = All;
+                Caption = 'Herkunftsbeleg korrigieren';
+                Image = Edit;
+                ToolTip = 'Setzt das Feld Herkunftsbeleg der Eintraege in Herkunftsbelege Mandant zu den angegebenen Bestellungen auf den Wert eines fertigen Eintrags (Einkaufsbestellung). Korrigiert Eintraege aus aelteren Versionen. Eingabe: Bestellung Nr. und optional Mandant.';
+
+                trigger OnAction()
+                var
+                    Input: Page "LVS Abgleich Eingabe";
+                    Sync: Codeunit "LVS Source Doc Sync TITUS";
+                    DateFrom: Date;
+                    ReceiptFilter: Text;
+                    OrderFilter: Text;
+                    CompanyFilter: Text;
+                    Count: Integer;
+                begin
+                    if Input.RunModal() <> Action::OK then
+                        exit;
+                    Input.GetValues(DateFrom, ReceiptFilter, OrderFilter, CompanyFilter);
+                    if OrderFilter = '' then
+                        Error('Bitte eine Bestellung Nr. angeben, zum Beispiel B240000720|B240000762|B240000745.');
+                    Count := Sync.FixSourceDocument(CompanyFilter, OrderFilter, false);
+                    if Count = 0 then
+                        Error('Keine Eintraege mit abweichendem Herkunftsbeleg gefunden.');
+                    if not Confirm('Herkunftsbeleg bei %1 Eintraegen korrigieren?', false, Count) then
+                        exit;
+                    Sync.FixSourceDocument(CompanyFilter, OrderFilter, true);
+                    Message('%1 Eintraege korrigiert.', Count);
+                end;
+            }
             action(FehlerZuruecksetzen)
             {
                 ApplicationArea = All;

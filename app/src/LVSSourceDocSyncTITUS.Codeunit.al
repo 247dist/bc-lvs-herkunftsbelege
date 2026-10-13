@@ -343,26 +343,109 @@ codeunit 50950 "LVS Source Doc Sync TITUS"
     local procedure TryInsertRequest(SourceCompany: Text; OrderNo: Text; LocationCode: Text)
     var
         PurchaseHeader: Record "Purchase Header";
+        TemplateRef: RecordRef;
         RecRef: RecordRef;
     begin
         PurchaseHeader.ChangeCompany(SourceCompany);
         PurchaseHeader.Get(PurchaseHeader."Document Type"::Order, OrderNo);
 
-        // Werte wie beim manuell angelegten Eintrag (Beispiel B240000691 aus 247).
+        // Alle Werte (auch die der Optionsfelder) stammen von einem fertigen Eintrag, nur die Bestelldaten werden ersetzt.
+        if not FindTemplate(TemplateRef, SourceCompany) then
+            Error('Keine Vorlage gefunden: kein Eintrag mit gesetztem "Befindet sich im LVS" fuer Einkaufsbestellungen.');
         RecRef.Open(GetTableId());
         RecRef.Init();
+        CopyFromTemplate(RecRef, TemplateRef);
         SetValue(RecRef, 'Companyname', SourceCompany);
-        SetValue(RecRef, 'Type', 0); // Eingehend
         SetValue(RecRef, 'LocationCode', LocationCode);
-        SetValue(RecRef, 'SourceType', Database::"Purchase Line");
-        SetValue(RecRef, 'SourceSubtype', 1);
         SetValue(RecRef, 'SourceNo', OrderNo);
-        SetValue(RecRef, 'SourceDocument', 2); // Einkaufsbestellung
-        SetValue(RecRef, 'DocumentStatus', 0); // Offen
-        SetValue(RecRef, 'ShippingAdvice', 0); // Teillieferung
-        SetValue(RecRef, 'DestinationType', 2); // Kreditor
         SetValue(RecRef, 'DestinationNo', PurchaseHeader."Buy-from Vendor No.");
+        SetValue(RecRef, 'ExternalDocumentNo', '');
+        SetValue(RecRef, 'ExpectedReceiptDate', 0D);
+        SetValue(RecRef, 'ShipmentDate', 0D);
+        SetValue(RecRef, 'CompletelyHandled', false);
+        SetValue(RecRef, 'IsinWMS', false);
+        SetValue(RecRef, 'BlockedforWMS', false);
+        SetValue(RecRef, 'ErrorMessage', '');
+        SetValue(RecRef, 'ErrorCallStack', '');
         RecRef.Insert(true);
+    end;
+
+    // Sucht einen fertigen Eintrag fuer Einkaufsbestellungen (Eingehend, Herkunftsart 39, Untertyp 1) mit
+    // gesetztem "Befindet sich im LVS", bevorzugt aus demselben Mandanten.
+    local procedure FindTemplate(var TemplateRef: RecordRef; SourceCompany: Text): Boolean
+    begin
+        if TryFindTemplate(TemplateRef, SourceCompany) then
+            exit(true);
+        exit(TryFindTemplate(TemplateRef, ''));
+    end;
+
+    local procedure TryFindTemplate(var TemplateRef: RecordRef; SourceCompany: Text): Boolean
+    var
+        FieldRef: FieldRef;
+    begin
+        Clear(TemplateRef);
+        TemplateRef.Open(GetTableId());
+        SetFilterValue(TemplateRef, 'Type', '0');
+        SetFilterValue(TemplateRef, 'SourceType', Format(Database::"Purchase Line"));
+        SetFilterValue(TemplateRef, 'SourceSubtype', '1');
+        FieldRef := TemplateRef.Field(FieldNoOrError(TemplateRef.Number, 'IsinWMS'));
+        FieldRef.SetRange(true);
+        if SourceCompany <> '' then
+            SetFilterValue(TemplateRef, 'Companyname', SourceCompany);
+        exit(TemplateRef.FindLast());
+    end;
+
+    local procedure CopyFromTemplate(var NewRef: RecordRef; var TemplateRef: RecordRef)
+    var
+        FromField: FieldRef;
+        ToField: FieldRef;
+        Index: Integer;
+    begin
+        for Index := 1 to TemplateRef.FieldCount() do begin
+            FromField := TemplateRef.FieldIndex(Index);
+            if (FromField.Class = FieldClass::Normal) and (FromField.Number < 2000000000) and (FromField.Type <> FieldType::BLOB) then begin
+                ToField := NewRef.Field(FromField.Number);
+                ToField.Value := FromField.Value;
+            end;
+        end;
+    end;
+
+    // Setzt bei Eintraegen zu den angegebenen Bestellungen das Feld "Herkunftsbeleg" auf den Wert eines fertigen Eintrags.
+    // Korrigiert Eintraege aus aelteren Versionen, die den Wert als Zahl falsch geschrieben haben. Apply = false zaehlt nur.
+    procedure FixSourceDocument(CompanyFilter: Text; OrderFilter: Text; Apply: Boolean): Integer
+    var
+        TemplateRef: RecordRef;
+        RecRef: RecordRef;
+        TemplateField: FieldRef;
+        TargetField: FieldRef;
+        FieldNo: Integer;
+        Count: Integer;
+    begin
+        if OrderFilter = '' then
+            Error('Bestellnummer fehlt.');
+        if not FindTemplate(TemplateRef, '') then
+            Error('Keine Vorlage gefunden: kein Eintrag mit gesetztem "Befindet sich im LVS" fuer Einkaufsbestellungen.');
+        FieldNo := FieldNoOrError(TemplateRef.Number, 'SourceDocument');
+        TemplateField := TemplateRef.Field(FieldNo);
+
+        RecRef.Open(GetTableId());
+        SetFilterValue(RecRef, 'SourceNo', OrderFilter);
+        SetFilterValue(RecRef, 'Type', '0');
+        SetFilterValue(RecRef, 'SourceType', Format(Database::"Purchase Line"));
+        if CompanyFilter <> '' then
+            SetFilterValue(RecRef, 'Companyname', CompanyFilter);
+        if RecRef.FindSet(true) then
+            repeat
+                TargetField := RecRef.Field(FieldNo);
+                if Format(TargetField.Value, 0, 9) <> Format(TemplateField.Value, 0, 9) then begin
+                    Count += 1;
+                    if Apply then begin
+                        TargetField.Value := TemplateField.Value;
+                        RecRef.Modify(false);
+                    end;
+                end;
+            until RecRef.Next() = 0;
+        exit(Count);
     end;
 
     local procedure RequestExists(SourceCompany: Text; OrderNo: Text; LocationCode: Text): Boolean
